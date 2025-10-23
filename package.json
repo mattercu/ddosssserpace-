@@ -1,0 +1,12 @@
+{
+  "name": "ddos-tool",
+  "version": "1.0.0",
+  "description": "Advanced DDoS Tool",
+  "main": "ddos.js",
+  "scripts": {
+    "start": "node ddos.js"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  }
+}
