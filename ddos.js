@@ -28,7 +28,7 @@ class RawFlood {
         console.log(`⚡ Rate: ${rate}ms`);
         console.log(`🧵 Threads: ${threads}`);
         console.log(`💥 Mode: Raw Flood (No Bypass)`);
-        console.log(`⏹️ Type 'stop' to cancel attack\n`);
+        console.log(`⏹️ Type '/stop' to cancel attack\n`);
 
         this.setupStopListener();
 
@@ -56,7 +56,7 @@ class RawFlood {
         });
 
         rl.on('line', (input) => {
-            if (input.trim().toLowerCase() === 'stop') {
+            if (input.trim().toLowerCase() === '/stop') {
                 console.log('\n🛑 Stopping attack...');
                 this.stop();
                 rl.close();
@@ -127,7 +127,7 @@ class RawFlood {
         this.isRunning = false;
         this.cleanup();
         this.displayStats();
-        console.log('\n🛑 Attack stopped by user');
+        console.log('\n🛑 Attack stopped by user command /stop');
         process.exit(0);
     }
 
@@ -152,9 +152,9 @@ if (require.main === module) {
     } else {
         console.log('Usage: node rawflood.js <target> <time> <rate> <threads>');
         console.log('Example: node rawflood.js https://example.com/ 60 10 50');
-        console.log('Commands: Type "stop" during attack to cancel');
+        console.log('Commands: Type "/stop" during attack to cancel');
         process.exit(1);
     }
 }
 
-module.exports = RawFlood;
+module.exports = RawFlood;module.exports = RawFlood;
