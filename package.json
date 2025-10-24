@@ -1,12 +1,38 @@
 {
-  "name": "ddos-tool",
-  "version": "1.0.0",
-  "description": "Advanced DDoS Tool",
-  "main": "ddos.js",
+  "name": "layer7-ddos-suite-pro",
+  "version": "2.0.0",
+  "description": "DDoS Layer 7 PRO: Bypass Cloudflare + Telegram Bot + proxy1.txt mặc định",
+  "main": "bot.js",
   "scripts": {
-    "start": "node ddos.js"
+    "start": "node bot.js",
+    "browser": "node browser.js",
+    "dev": "nodemon bot.js",
+    "clean": "rm -rf node_modules package-lock.json",
+    "reinstall": "npm run clean && npm install",
+    "install-chromium": "npx puppeteer-install"
+  },
+  "keywords": [
+    "ddos",
+    "cloudflare",
+    "bypass",
+    "telegram",
+    "bot",
+    "puppeteer"
+  ],
+  "author": "ProSec",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
   },
   "dependencies": {
-    "node-fetch": "^3.3.2"
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "node-telegram-bot-api": "^0.66.0",
+    "async": "^3.2.5",
+    "chalk": "^4.1.2",
+    "fs-extra": "^11.2.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.7"
   }
 }
