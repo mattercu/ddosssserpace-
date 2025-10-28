@@ -1,0 +1,19 @@
+{
+  "name": "puppeteer-stealth-server",
+  "version": "1.0.0",
+  "description": "Server chạy puppeteer với plugin stealth",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "puppeteer": "^23.3.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "",
+  "license": "MIT"
+}
