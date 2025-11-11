@@ -1,0 +1,14 @@
+{
+  "delay_min": 1,
+  "delay_max": 3,
+  "backoff_factor": 2,
+  "crawl_depth": 2,
+  "max_retries": 3,
+  "timeout": 30,
+  "concurrent_requests": 5,
+  "use_cache": true,
+  "cache_ttl": 3600,
+  "bot_types": ["google", "bing", "facebook"],
+  "proxy_enabled": false,
+  "proxy_list": []
+}

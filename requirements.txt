@@ -1,0 +1,10 @@
+requests
+beautifulsoup4
+playwright
+cloudscraper
+dnspython
+cryptography
+fake-useragent
+pandas
+aiohttp
+redis
